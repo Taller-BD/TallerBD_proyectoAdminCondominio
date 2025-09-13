@@ -1,0 +1,7 @@
+# Ignorar wallets y archivos con credenciales
+*.zip
+wallet/
+passwords.txt
+
+# Ignorar configuraciones locales de VS Code
+.vscode/
