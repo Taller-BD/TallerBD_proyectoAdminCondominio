@@ -8,6 +8,9 @@ DECLARE -- inicio del bloque para declarar variables, tipos, cursores y estructu
     v_anno_mes      GASTO_COMUN.anno_mes_pcgc%TYPE := 202503; -- marzo de 2025
     -------------------------
 
+    -- 0,5. Defino variable para filtrar por dptos. Null muestra todos por defecto
+    v_nro_depto     GASTO_COMUN.NRO_DEPTO%TYPE := NULL;
+
     -- 1. se define un RECORD que es como una fila temporal para almacenar un registro de la tabla GASTO_COMUN
     TYPE gasto_rec IS RECORD (
         -- es la variable que usaremos para guardar datos de una fila a la vez cuando usamos el cursor explícito
@@ -26,10 +29,13 @@ DECLARE -- inicio del bloque para declarar variables, tipos, cursores y estructu
     TYPE varray_deptos IS VARRAY(100) OF GASTO_COMUN.nro_depto%TYPE; -- arreglo para guardar los números de departamento
     v_deptos varray_deptos := varray_deptos(); 
 
-    TYPE varray_prorrateo IS VARRAY(100) OF NUMBER(12,2); -- arreglo para guardar los montos prorrateados
-    -- en el tipo de dato number(12,2), el 12 es la cantidad de números que puede almacenar y el 2 los decimales
-    v_prorrateo varray_prorrateo := varray_prorrateo();
+/*  
+    SE ELIMINA ESTE VARRAY YA QUE NO ES NECESARIO TENER OTRO ARREGLO PARA PRORRATEO,
+    YA QUE PODEMOS USAR EL MISMO v_montos PARA GUARDAR LOS MONTOS PRORRATEADOS.
 
+    TYPE varray_prorrateo IS VARRAY(100) OF NUMBER(12,2);
+    v_prorrateo varray_prorrateo := varray_prorrateo();
+*/
 
     -- 3. Cursor simple selecciona todos los departamentos y su monto total del edificio
     -- con id 50 en marzo 2025
@@ -53,12 +59,13 @@ DECLARE -- inicio del bloque para declarar variables, tipos, cursores y estructu
     v_index        NUMBER := 0;  -- lleva la posición dentro del varray
     v_suma_pror    NUMBER := 0;  -- suma de los prorrateos
     v_porcentaje   NUMBER := 0;  -- porcentaje de prorrateo
+    v_prorrateo    NUMBER := 0;  -- monto prorrateado para cada departamento
 
 
 BEGIN
     
     -- a) Usamos cursor simple con FOR (loop implícito)
-    DBMS_OUTPUT.PUT_LINE('--- Cursor simple ---');
+
     FOR reg IN c_gastos LOOP -- recorre cada fila del cursor c_gastos
         
         -- Imprime en consola el departamento y su monto.
@@ -87,7 +94,7 @@ BEGIN
 
     
     -- b) Usamos cursor explícito
-    DBMS_OUTPUT.PUT_LINE('--- Cursor explícito ---'); -- print
+
     OPEN c_gastos_expl; -- abrimos el cursor con OPEN
     LOOP
         FETCH c_gastos_expl INTO v_gasto;
