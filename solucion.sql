@@ -29,13 +29,10 @@ DECLARE -- inicio del bloque para declarar variables, tipos, cursores y estructu
     TYPE varray_deptos IS VARRAY(100) OF GASTO_COMUN.nro_depto%TYPE; -- arreglo para guardar los números de departamento
     v_deptos varray_deptos := varray_deptos(); 
 
-/*  
-    SE ELIMINA ESTE VARRAY YA QUE NO ES NECESARIO TENER OTRO ARREGLO PARA PRORRATEO,
-    YA QUE PODEMOS USAR EL MISMO v_montos PARA GUARDAR LOS MONTOS PRORRATEADOS.
-
-    TYPE varray_prorrateo IS VARRAY(100) OF NUMBER(12,2);
-    v_prorrateo varray_prorrateo := varray_prorrateo();
-*/
+-- Se necesita un varray para guardar los montos prorrateados por departamento.
+-- Aunque podríamos reutilizar v_montos, mantener un arreglo separado mejora claridad.
+TYPE varray_prorrateo IS VARRAY(100) OF NUMBER(12,2);
+v_prorrateo varray_prorrateo := varray_prorrateo();
 
     -- 3. Cursor simple selecciona todos los departamentos y su monto total del edificio
     -- con id 50 en marzo 2025
@@ -46,12 +43,14 @@ DECLARE -- inicio del bloque para declarar variables, tipos, cursores y estructu
           AND id_edif = v_id_edif;
 
     
-    -- 4. Cursor explícito (otra forma de recorrer): OPEN, FETCH y CLOSE
-    CURSOR c_gastos_expl IS
-        SELECT id_edif, nro_depto, monto_total_gc
-        FROM GASTO_COMUN
-        WHERE anno_mes_pcgc = v_anno_mes
-          AND id_edif = v_id_edif;
+        -- 4. Cursor explícito con parámetro (permite filtrar por nro_depto)
+        -- p_nro_depto puede ser NULL para seleccionar todos los departamentos
+        CURSOR c_gastos_expl(p_nro_depto GASTO_COMUN.nro_depto%TYPE DEFAULT NULL) IS
+                SELECT id_edif, nro_depto, monto_total_gc
+                FROM GASTO_COMUN
+                WHERE anno_mes_pcgc = v_anno_mes
+                    AND id_edif = v_id_edif
+                    AND (p_nro_depto IS NULL OR nro_depto = p_nro_depto);
 
 
     -- 5. Variables escalares
@@ -93,9 +92,11 @@ BEGIN
     END LOOP; -- cierra loop
 
     
-    -- b) Usamos cursor explícito
+    -- b) Usamos cursor explícito (ahora parametrizado)
 
-    OPEN c_gastos_expl; -- abrimos el cursor con OPEN
+    -- Abrimos el cursor pasando el número de depto opcionalmente. Si v_nro_depto es NULL,
+    -- el cursor devolverá las filas de todos los departamentos (por la condición en el WHERE).
+    OPEN c_gastos_expl(v_nro_depto);
     LOOP
         FETCH c_gastos_expl INTO v_gasto;
         EXIT WHEN c_gastos_expl%NOTFOUND; -- sale del loop si no hay más filas
