@@ -45,13 +45,13 @@ v_prorrateo varray_prorrateo := varray_prorrateo();
     
         -- 4. Cursor explícito con parámetro (permite filtrar por nro_depto)
         -- p_nro_depto puede ser NULL para seleccionar todos los departamentos
-        CURSOR c_gastos_expl(p_nro_depto GASTO_COMUN.nro_depto%TYPE DEFAULT NULL) IS
+        CURSOR c_gastos_expl(p_nro_depto NUMBER) IS
                 SELECT id_edif, nro_depto, monto_total_gc
                 FROM GASTO_COMUN
                 WHERE anno_mes_pcgc = v_anno_mes
                     AND id_edif = v_id_edif
                     AND (p_nro_depto IS NULL OR nro_depto = p_nro_depto);
-
+                    
 
     -- 5. Variables escalares
     v_total        NUMBER := 0;  -- suma montos de todos los departamentos (para el edificio)
