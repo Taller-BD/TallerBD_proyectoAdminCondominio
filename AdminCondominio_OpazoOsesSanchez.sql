@@ -3,7 +3,7 @@
 /* DROP SEQUENCE seq_errores_detectados; */
 CREATE SEQUENCE seq_errores_detectados START WITH 1 INCREMENT BY 1;
 
-CREATE TABLE errores_detectados (
+CREATE TABLE ERRORES_DETECTADOS (
     error_id  NUMBER PRIMARY KEY,
     mensaje   VARCHAR2(4000),
     fecha_reg DATE DEFAULT SYSDATE
@@ -17,22 +17,24 @@ END pkg_registro_errores;
 
 -- Body del Package Erorres
 CREATE OR REPLACE PACKAGE BODY pkg_registro_errores AS
-    PROCEDURE sp_registrar_error(p_mensaje VARCHAR2) IS
-    BEGIN
-        INSERT INTO errores_detectados(error_id, mensaje)
-        VALUES (seq_errores_detectados.NEXTVAL, SUBSTR(NVL(p_mensaje,''),1,4000));
-    EXCEPTION
-        WHEN OTHERS THEN NULL; 
-    END;
+    PROCEDURE sp_registrar_error(p_mensaje VARCHAR2)
+        IS
+            BEGIN
+                INSERT INTO ERRORES_DETECTADOS(error_id, mensaje)
+                VALUES (seq_errores_detectados.NEXTVAL, SUBSTR(NVL(p_mensaje,''),1,4000));
+            EXCEPTION
+                WHEN OTHERS THEN NULL; 
+            END;
 
-    PROCEDURE sp_truncar_errores IS
-    BEGIN
-        EXECUTE IMMEDIATE 'TRUNCATE TABLE errores_detectados';
-    EXCEPTION
-        WHEN OTHERS THEN
-            INSERT INTO errores_detectados(error_id, mensaje)
-            VALUES (seq_errores_detectados.NEXTVAL, 'No se pudo truncar errores_detectados: '||SQLERRM);
-    END;
+    PROCEDURE sp_truncar_errores
+        IS
+            BEGIN
+                EXECUTE IMMEDIATE 'TRUNCATE TABLE ERRORES_DETECTADOS';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    INSERT INTO ERRORES_DETECTADOS(error_id, mensaje)
+                    VALUES (seq_errores_detectados.NEXTVAL, 'No se pudo truncar la tabla ERRORES_DETECTADOS: '||SQLERRM);
+            END;
 END pkg_registro_errores;
 
 
@@ -55,11 +57,14 @@ BEGIN
     BEGIN
         SELECT tp.descripcion_tper
         INTO v_tipo
-        FROM RESPONSABLE_PAGO_GASTO_COMUN rpgc 
+        FROM GASTO_COMUN gc
+        JOIN RESPONSABLE_PAGO_GASTO_COMUN rpgc 
+            ON (gc.numrun_rpgc = rpgc.numrun_rpgc)
         JOIN TIPO_PERSONA tp
             ON (tp.id_tper = rpgc.id_tper)
-        WHERE rpgc.id_edif = :NEW.ID_EDIF
-          AND rpgc.nro_depto = :NEW.NRO_DEPTO;
+        WHERE gc.id_edif = :NEW.id_edif
+          AND gc.nro_depto = :NEW.nro_depto
+          AND gc.anno_mes_pcgc = :NEW.anno_mes_pcgc;
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
             v_tipo := 'DESCONOCIDO';
