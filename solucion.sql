@@ -1,7 +1,49 @@
+-- Secuencia para errores
+CREATE SEQUENCE seq_errores_detectados START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
 
-SET SERVEROUTPUT ON; --habilita la salida de mensajes en consola, aunque me lee igual sin esto
+-- Tabla para registrar errores y mensajes informativos
+CREATE TABLE errores_detectados (
+    error_id    NUMBER PRIMARY KEY,
+    mensaje     VARCHAR2(4000),    -- descripción del error o mensaje
+    contexto    VARCHAR2(4000)     -- contexto adicional
+);
 
-DECLARE -- inicio del bloque para declarar variables, tipos, cursores y estructuras
+-- Package para manejo de errores
+CREATE OR REPLACE PACKAGE pkg_registro_errores AS
+    PROCEDURE sp_registrar_error(
+        p_mensaje   VARCHAR2,
+        p_contexto  VARCHAR2 := NULL
+    );
+END pkg_registro_errores;
+
+-- Package body para manejo de errores
+CREATE OR REPLACE PACKAGE BODY pkg_registro_errores IS
+    PROCEDURE sp_registrar_error(
+        p_mensaje   VARCHAR2,
+        p_contexto  VARCHAR2
+    )
+    IS
+    BEGIN
+        INSERT INTO errores_detectados (
+            error_id,
+            mensaje,
+            contexto
+        ) VALUES (
+            seq_errores_detectados.NEXTVAL,
+            SUBSTR(NVL(p_mensaje,''),1,4000),
+            SUBSTR(NVL(p_contexto,''),1,4000)
+        );
+    EXCEPTION
+        WHEN OTHERS THEN
+            -- Manejo de error en el procedimiento de registro (no romper la tx principal)
+            NULL; -- evitar bucle infinito de errores
+    END sp_registrar_error;
+END pkg_registro_errores;
+
+
+
+--
+DECLARE 
     
     -- 0. Defino variables constantes para no repetir el año mes y el id del edificio
     v_id_edif       GASTO_COMUN.id_edif%TYPE := 50; 
@@ -13,14 +55,11 @@ DECLARE -- inicio del bloque para declarar variables, tipos, cursores y estructu
 
     -- 1. se define un RECORD que es como una fila temporal para almacenar un registro de la tabla GASTO_COMUN
     TYPE gasto_rec IS RECORD (
-        -- es la variable que usaremos para guardar datos de una fila a la vez cuando usamos el cursor explícito
-        -- %TYPE hace que cada campo tome el tipo de dato de la tabla
         id_edif       GASTO_COMUN.id_edif%TYPE,
         nro_depto     GASTO_COMUN.nro_depto%TYPE,
         monto_total   GASTO_COMUN.monto_total_gc%TYPE
     );
     v_gasto gasto_rec; 
-
     
     -- 2. VARRAY para guardar hasta 100 montos de gastos comunes de cada departamento
     TYPE varray_montos IS VARRAY(100) OF NUMBER(10);
@@ -29,13 +68,11 @@ DECLARE -- inicio del bloque para declarar variables, tipos, cursores y estructu
     TYPE varray_deptos IS VARRAY(100) OF GASTO_COMUN.nro_depto%TYPE; -- arreglo para guardar los números de departamento
     v_deptos varray_deptos := varray_deptos(); 
 
--- Se necesita un varray para guardar los montos prorrateados por departamento.
--- Aunque podríamos reutilizar v_montos, mantener un arreglo separado mejora claridad.
+
 TYPE varray_prorrateo IS VARRAY(100) OF NUMBER(12,2);
 v_prorrateo varray_prorrateo := varray_prorrateo();
 
-    -- 3. Cursor simple selecciona todos los departamentos y su monto total del edificio
-    -- con id 50 en marzo 2025
+    -- 3. Cursor simple selecciona todos los departamentos y su monto total del edificio con id 50 en marzo 2025
     CURSOR c_gastos IS
         SELECT id_edif, nro_depto, monto_total_gc
         FROM GASTO_COMUN
@@ -43,8 +80,7 @@ v_prorrateo varray_prorrateo := varray_prorrateo();
           AND id_edif = v_id_edif;
 
     
-        -- 4. Cursor explícito con parámetro (permite filtrar por nro_depto)
-        -- p_nro_depto puede ser NULL para seleccionar todos los departamentos
+        -- 4. Cursor explícito con parámetro (permite filtrar por nro_depto); p_nro_depto puede ser NULL para seleccionar todos los departamentos
         CURSOR c_gastos_expl(p_nro_depto NUMBER) IS
                 SELECT id_edif, nro_depto, monto_total_gc
                 FROM GASTO_COMUN
@@ -67,14 +103,12 @@ BEGIN
 
     FOR reg IN c_gastos LOOP -- recorre cada fila del cursor c_gastos
         
-        -- Imprime en consola el departamento y su monto.
-        DBMS_OUTPUT.PUT_LINE('Depto: ' || reg.nro_depto || ' - Monto: ' || reg.monto_total_gc);
-        -- no se necesita hacer OPEN ni FETCH; el FOR lo hace automáticamente
+    -- Registrar en tabla de errores/log (mensaje informativo)
+    pkg_registro_errores.sp_registrar_error('Depto: ' || reg.nro_depto || ' - Monto: ' || reg.monto_total_gc, 'id_edif='||v_id_edif);
         
         -- Guardamos en VARRAY
         v_index := v_index + 1; -- se aumenta el índice para guardar el monto en el varray
 
-        -- antes de EXTEND, reviso que el varray no haya llegado a su tamaño máximo
         IF v_deptos.COUNT = v_deptos.LIMIT THEN
             RAISE_APPLICATION_ERROR(-20003, 'Se alcanzó el límite de 100 departamentos en el varray.');
         END IF;
@@ -89,13 +123,12 @@ BEGIN
         v_montos.EXTEND; -- agrega un espacio vacío al final del varray
         v_montos(v_index) := reg.monto_total_gc; -- guarda el monto en la misma posición
 
-    END LOOP; -- cierra loop
+    END LOOP; 
 
     
     -- b) Usamos cursor explícito (ahora parametrizado)
 
-    -- Abrimos el cursor pasando el número de depto opcionalmente. Si v_nro_depto es NULL,
-    -- el cursor devolverá las filas de todos los departamentos (por la condición en el WHERE).
+    -- Devuelve las filas de todos los departamentos
     OPEN c_gastos_expl(v_nro_depto);
     LOOP
         FETCH c_gastos_expl INTO v_gasto;
@@ -112,13 +145,13 @@ BEGIN
     END LOOP;
     CLOSE c_gastos_expl; -- cierra cursor explícito
 
-    -- Mostrar total
-    DBMS_OUTPUT.PUT_LINE('Total edificios = ' || v_total); -- print
+    -- Registrar total
+    pkg_registro_errores.sp_registrar_error('Total edificios = ' || v_total, 'id_edif='||v_id_edif); -- registrado en errores_detectados
 
     -- c) Calcular prorrateo, según % de depto
-    DBMS_OUTPUT.PUT_LINE('--- Prorrateo según porcentaje DEPARTAMENTO ---');
+    pkg_registro_errores.sp_registrar_error('--- Prorrateo según porcentaje DEPARTAMENTO ---', 'id_edif='||v_id_edif);
     IF v_index = 0 THEN
-        DBMS_OUTPUT.PUT_LINE('No hay departamentos para prorratear.');
+        pkg_registro_errores.sp_registrar_error('No hay departamentos para prorratear.', 'id_edif='||v_id_edif);
     ELSE
         FOR registro IN 1..v_index LOOP
 
@@ -133,8 +166,7 @@ BEGIN
             EXCEPTION
                 WHEN NO_DATA_FOUND THEN 
                     v_porcentaje := 0; -- si no encuentra el depto, pone el porcentaje en cero
-                    DBMS_OUTPUT.PUT_LINE('ADVERTENCIA: Dpto '|| v_deptos(registro) ||
-                                         ' no tiene porcentaje de prorrateo en DEPARTAMENTO. Se usará 0%.' ); -- imprime advertencia
+                    pkg_registro_errores.sp_registrar_error('Depto no encontrado', 'id_edif='||v_id_edif||',nro_depto='||v_deptos(registro));
                 WHEN TOO_MANY_ROWS THEN -- si hay más de un registro con el mismo depto, lanza error
                     RAISE_APPLICATION_ERROR(-20002, 'Duplicado de porcentaje de prorrateo para depto '
                                                 || v_deptos(registro) || ' en DEPARTAMENTO. Revise los datos.');
@@ -152,41 +184,18 @@ BEGIN
             -- Acumular suma prorrateo
             v_suma_pror := v_suma_pror + v_prorrateo(registro);
 
-            -- Mostrar comparación entre depto, porcentaje, prorrateo y original en pantalla
-            DBMS_OUTPUT.PUT_LINE('Departamento: ' || v_deptos(registro) ||
+            -- Registrar comparación entre depto, porcentaje, prorrateo y original
+            pkg_registro_errores.sp_registrar_error('Departamento: ' || v_deptos(registro) ||
                                 ' Porcentaje: ' || NVL(v_porcentaje,0) ||
                                 ' Prorrateo: ' || v_prorrateo(registro) ||
-                                ' Original: ' || v_montos(registro)
-                                );
+                                ' Original: ' || v_montos(registro), 'id_edif='||v_id_edif||',nro_depto='||v_deptos(registro));
         END LOOP;
 
     END IF;
 
 EXCEPTION
     WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM); -- si ocurre cualquier excepción no controlada, imprime el mensaje
+        pkg_registro_errores.sp_registrar_error('Error: ' || SQLERRM, 'bloque principal'); -- registrar y relanzar
+        RAISE;
 END;
 /
-
-
-
---Apuntes:
---1.-recorremos la tabla GASTO_COMUN de dos maneras:cursor simple y cursor explicito
---2.-usamos un varray para guardar los montos de cada departamento y calculamos el total 
---3.-manejamos excepcion para monto nulo en el cursor explicito
---4.-Mostramos resultados en consola
-
---Terminos y partes importantes:
---DECLARE-->seccion donde se declara variable,tipo,cursores y estructuras antes de ejecutar el codigo
---TYPE ...IS RECORD-->define un registro que agrupa varias columas de una tabla en una sola variables, ejemplo: gasto_Rec junta id_edif, nro_depto y mono_total
---v_gasto-->varianle del tipo gasto_rec que guarda temporalmente una fila del cursor explicito
---TYPE ...IS VARRAY(n)-->define un arreglo de tamaño fijo n, ejemplo: varray_montos guarda hasta 100 montos
---v_montos-->variable del tipo varray_montos que guarda los montos de cada departamento
---CURSOR c_gastos/c_gastos_expl--> cursores que definen una consulta a al tabla GASTO_COMUN para luego rrecorer sus resultados. c_gastos(cursor simple usado con for loop), c_gastots_expl(cursor explicito usando OPEN.FETCH Y CLOES)
---DBMS_OUTPUT.PUT_LINE(...) -->imprime texto en la consola de salida
---OPEN / FETCH / CLOSE → Manejo manual del cursor explícito: abrirlo, traer filas una por una y cerrarlo al final.
---EXCEPTION / WHEN OTHERS → Captura cualquier error que ocurra en el bloque y lo muestra con SQLERRM.
-
-
-
-
