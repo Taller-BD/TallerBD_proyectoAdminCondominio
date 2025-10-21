@@ -3,6 +3,7 @@
 /* DROP SEQUENCE seq_errores_detectados; */
 CREATE SEQUENCE seq_errores_detectados START WITH 1 INCREMENT BY 1;
 
+/* DROP TABLE ERRORES_DETECTADOS */
 CREATE TABLE ERRORES_DETECTADOS (
     error_id  NUMBER PRIMARY KEY,
     mensaje   VARCHAR2(4000),
@@ -48,6 +49,7 @@ CREATE TABLE registro_pagos (
 );
 
 -- Trigger que registra cada pago en la tabla de registro
+-- **************************************************************************************
 CREATE OR REPLACE TRIGGER tgr_registra_pago
 AFTER INSERT ON PAGO_GASTO_COMUN
 FOR EACH ROW
@@ -87,6 +89,7 @@ CREATE OR REPLACE PACKAGE pkg_admin_condominio AS
         p_anno_mes  NUMBER,
         p_nro_depto NUMBER DEFAULT NULL
     );
+
     PROCEDURE sp_registrar_pago(
         p_id_edif    NUMBER,
         p_nro_depto  NUMBER,
@@ -131,11 +134,12 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
     FUNCTION fc_total_gastos_mes(p_id_edif NUMBER, p_anno_mes NUMBER)
         RETURN NUMBER
             IS
-                    v_total NUMBER := 0;
+                v_total NUMBER := 0;
                 BEGIN
-                    FOR r IN cur_gastos(p_id_edif, p_anno_mes) LOOP
-                        v_total := v_total + NVL(r.monto_total_gc,0);
-                    END LOOP;
+                    FOR r IN cur_gastos(p_id_edif, p_anno_mes)
+                        LOOP
+                            v_total := v_total + NVL(r.monto_total_gc,0);
+                        END LOOP;
                     RETURN v_total;
                 EXCEPTION
                     WHEN OTHERS THEN
@@ -179,23 +183,23 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
                 END;
 
     /* Procedimiento */
-    PROCEDURE sp_prorratea_gastos(p_id_edif   NUMBER, p_anno_mes  NUMBER, p_nro_depto NUMBER)
+    PROCEDURE sp_prorratea_gastos(p_id_edif NUMBER, p_anno_mes NUMBER, p_nro_depto NUMBER)
         IS
             v_reg           rec_gasto;
-            v_montos        varray_montos := varray_montos();
+            v_montos        varray_montos := varray_montos(); 
             v_deptos        varray_deptos := varray_deptos();
             v_prorr         varray_prorrateo := varray_prorrateo();
-            v_idx           PLS_INTEGER := 0;
+            v_idx           NUMBER := 0; 
             v_total         NUMBER := 0;
             v_suma_pror     NUMBER := 0;
+            
             BEGIN
                 /* Cursor simple */
-                FOR r IN cur_gastos(p_id_edif, p_anno_mes)
-                    LOOP
-                        IF v_deptos.COUNT = v_deptos.LIMIT OR v_montos.COUNT = v_montos.LIMIT THEN
-                            pkg_registro_errores.sp_registrar_error('Límite de VARRAY alcanzado (100)');    
-                            EXIT;
-                        END IF;
+                FOR r IN cur_gastos(p_id_edif, p_anno_mes) LOOP
+                    IF v_deptos.COUNT = v_deptos.LIMIT OR v_montos.COUNT = v_montos.LIMIT THEN
+                        pkg_registro_errores.sp_registrar_error('Límite de VARRAY alcanzado (100)');    
+                        EXIT;
+                    END IF;
 
                     v_idx := v_idx + 1;
                     v_deptos.EXTEND; v_deptos(v_idx) := r.nro_depto;
@@ -207,18 +211,18 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
 
                 /* Cursor con parámetros */
                 OPEN cur_gastos_filtrado(p_id_edif, p_anno_mes, p_nro_depto);
-                LOOP
-                    FETCH cur_gastos_filtrado INTO v_reg;
-                    EXIT WHEN cur_gastos_filtrado%NOTFOUND;
+                    LOOP
+                        FETCH cur_gastos_filtrado INTO v_reg;
+                        EXIT WHEN cur_gastos_filtrado%NOTFOUND;
 
-                    IF v_reg.monto_total IS NULL THEN
-                        pkg_registro_errores.sp_registrar_error(
-                            'Monto nulo detectado en gasto común',
-                            'ID Edificio: '||p_id_edif||', Dpto: '||v_reg.nro_depto||', mes: '||p_anno_mes);
-                    END IF;
+                        IF v_reg.monto_total IS NULL THEN
+                            pkg_registro_errores.sp_registrar_error(
+                                'Monto nulo detectado en gasto común',
+                                'ID Edificio: '||p_id_edif||', Dpto: '||v_reg.nro_depto||', mes: '||p_anno_mes);
+                        END IF;
 
-                    v_total := v_total + v_reg.monto_total;
-                END LOOP;
+                        v_total := v_total + v_reg.monto_total;
+                    END LOOP;
                 CLOSE cur_gastos_filtrado;
 
                 pkg_registro_errores.sp_registrar_error(
@@ -265,8 +269,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
                 VALUES (p_id_edif, p_nro_depto, p_monto, p_tipo_persona, SYSDATE);
             EXCEPTION
                 WHEN OTHERS THEN
-                    pkg_registro_errores.sp_registrar_error('Registrar pago: '||SQLERRM,
-                                                            'ID EDifiucio: '||p_id_edif||', depto='||p_nro_depto||', monto: '||p_monto||', tipo: '||p_tipo_persona);
+                    pkg_registro_errores.sp_registrar_error('Registrar pago: '||SQLERRM||
+                                                            ', ID EDifiucio: '||p_id_edif||', Depto: '||p_nro_depto||', monto: '||p_monto||', tipo: '||p_tipo_persona);
             END;
 END pkg_admin_condominio;
 
