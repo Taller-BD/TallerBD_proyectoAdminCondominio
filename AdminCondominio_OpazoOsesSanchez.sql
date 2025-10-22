@@ -69,8 +69,8 @@ BEGIN
         nro_depto,
         tipo_persona
     ) VALUES (
-        :NEW.fecha_pago,             
-        :NEW.monto_pagado,    
+        :NEW.fecha_cancelacion_pgc,             
+        :NEW.monto_cancelado_pgc,    
         :NEW.nro_depto,      
         v_tipo_persona       
     );
