@@ -13,7 +13,6 @@ CREATE TABLE ERRORES_DETECTADOS (
 -- Package registrar errores
 CREATE OR REPLACE PACKAGE pkg_registro_errores AS
     PROCEDURE sp_registrar_error(p_mensaje VARCHAR2);
-    PROCEDURE sp_truncar_errores; 
 END pkg_registro_errores;
 
 -- Body del Package Erorres
@@ -25,16 +24,6 @@ CREATE OR REPLACE PACKAGE BODY pkg_registro_errores AS
                 VALUES (seq_errores_detectados.NEXTVAL, SUBSTR(NVL(p_mensaje,''),1,4000));
             EXCEPTION
                 WHEN OTHERS THEN NULL; 
-            END;
-
-    PROCEDURE sp_truncar_errores
-        IS
-            BEGIN
-                EXECUTE IMMEDIATE 'TRUNCATE TABLE ERRORES_DETECTADOS';
-            EXCEPTION
-                WHEN OTHERS THEN
-                    INSERT INTO ERRORES_DETECTADOS(error_id, mensaje)
-                    VALUES (seq_errores_detectados.NEXTVAL, 'No se pudo truncar la tabla ERRORES_DETECTADOS: '||SQLERRM);
             END;
 END pkg_registro_errores;
 
@@ -294,22 +283,3 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
                                                             ', ID EDifiucio: '||p_id_edif||', Depto: '||p_nro_depto||', monto: '||p_monto||', tipo: '||p_tipo_persona);
             END;
 END pkg_admin_condominio;
-
-
-/* 3. Bloque de pba */
-DECLARE
-    v_id_edif  NUMBER := 50;
-    v_mes      NUMBER := 202503; -- Marzo 2025
-BEGIN
-    -- truncar tabla
-    pkg_registro_errores.sp_truncar_errores;
-
-    -- prorrateo global
-    pkg_admin_condominio.sp_prorratea_gastos(v_id_edif, v_mes, NULL);
-
-    -- prorrateo para un depto específico (ejemplo: 101)
-    pkg_admin_condominio.sp_prorratea_gastos(v_id_edif, v_mes, 101);
-
-    -- registrar un pago para ver el trigger funcionando
-    pkg_admin_condominio.sp_registrar_pago(v_id_edif, 101, 125000, 'ARRENDATARIO');
-END;
