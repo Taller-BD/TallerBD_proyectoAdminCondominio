@@ -103,7 +103,7 @@ CREATE OR REPLACE PACKAGE pkg_admin_condominio AS
         p_id_edif    NUMBER,
         p_nro_depto  NUMBER,
         p_monto      NUMBER,
-        p_tipo_persona VARCHAR2
+        p_anno_mes   NUMBER
     );
 END pkg_admin_condominio;
 
@@ -271,14 +271,17 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
             END;
 
     /* Procedimiento de pagos */
-    PROCEDURE sp_registrar_pago(p_id_edif NUMBER, p_nro_depto NUMBER, p_monto NUMBER, p_tipo_persona VARCHAR2)
+    PROCEDURE sp_registrar_pago(p_id_edif NUMBER, p_nro_depto NUMBER, p_monto NUMBER, p_anno_mes NUMBER)
         IS
             BEGIN
-                INSERT INTO PAGO_GASTO_COMUN(id_edif, nro_depto, monto_pagado, tipo_persona, fecha_pago)
-                VALUES (p_id_edif, p_nro_depto, p_monto, p_tipo_persona, SYSDATE);
+                INSERT INTO PAGO_GASTO_COMUN(id_edif, nro_depto, anno_mes_pcgc, fecha_cancelacion_pgc, monto_cancelado_pgc)
+                VALUES (p_id_edif, p_nro_depto, p_anno_mes, SYSDATE, p_monto);
             EXCEPTION
                 WHEN OTHERS THEN
                     pkg_registro_errores.sp_registrar_error('Registrar pago: '||SQLERRM||
-                                                            ', ID EDifiucio: '||p_id_edif||', Depto: '||p_nro_depto||', monto: '||p_monto||', tipo: '||p_tipo_persona);
+                    ', ID EDifiucio: '||p_id_edif||
+                    ', Depto: '||p_nro_depto||
+                    ', Monto: '||p_monto||
+                    ', Periodo: '||p_anno_mes);
             END;
 END pkg_admin_condominio;
