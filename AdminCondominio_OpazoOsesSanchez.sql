@@ -235,7 +235,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
                 CLOSE cur_gastos_filtrado;
 
                 pkg_registro_errores.sp_registrar_error(
-                    'Total del período (filtro '||NVL(TO_CHAR(p_nro_depto)||' TODOS')||') = '||v_total||
+                    'Total del período (filtro '||NVL(TO_CHAR(p_nro_depto),' TODOS')||') = '||v_total||
                     ' ID Edificio: '||p_id_edif||', mes: '||p_anno_mes
                 );
 
