@@ -54,26 +54,47 @@ CREATE OR REPLACE TRIGGER tgr_registra_pago
 AFTER INSERT ON PAGO_GASTO_COMUN
 FOR EACH ROW
 DECLARE
-    v_tipo VARCHAR2(100);
+    v_tipo_persona VARCHAR2(100);
 BEGIN
     BEGIN
+        -- Obtenemos el tipo de persona desde las tablas relacionadas
         SELECT tp.descripcion_tper
-        INTO v_tipo
+        INTO v_tipo_persona
         FROM GASTO_COMUN gc
-        JOIN RESPONSABLE_PAGO_GASTO_COMUN rpgc 
-            ON (gc.numrun_rpgc = rpgc.numrun_rpgc)
-        JOIN TIPO_PERSONA tp
-            ON (tp.id_tper = rpgc.id_tper)
+        JOIN RESPONSABLE_PAGO_GASTO_COMUN rpgc ON gc.numrun_rpgc = rpgc.numrun_rpgc
+        JOIN TIPO_PERSONA tp ON rpgc.id_tper = tp.id_tper
         WHERE gc.id_edif = :NEW.id_edif
-          AND gc.nro_depto = :NEW.nro_depto
-          AND gc.anno_mes_pcgc = :NEW.anno_mes_pcgc;
+        AND gc.nro_depto = :NEW.nro_depto
+        AND gc.anno_mes_pcgc = :NEW.anno_mes_pcgc;
+
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            v_tipo := 'DESCONOCIDO';
-        END;
+            v_tipo_persona := 'NO ESPECIFICADO';
+        WHEN TOO_MANY_ROWS THEN
+            v_tipo_persona := 'MULTIPLES REGISTROS';
+    END;
 
-    INSERT INTO registro_pagos(fecha_pago, monto_pagado, nro_depto, tipo_persona)
-    VALUES (:NEW.FECHA_CANCELACION_PGC, :NEW.MONTO_CANCELADO_PGC, :NEW.NRO_DEPTO, v_tipo);
+    -- Registramos el pago en la tabla de registro
+    INSERT INTO registro_pagos(
+        fecha_pago,
+        monto_pagado,
+        nro_depto,
+        tipo_persona
+    ) VALUES (
+        :NEW.fecha_pago,             
+        :NEW.monto_pagado,    
+        :NEW.nro_depto,      
+        v_tipo_persona       
+    );
+
+EXCEPTION
+    WHEN OTHERS THEN
+        pkg_registro_errores.sp_registrar_error(
+            'Error en trigger tgr_registra_pago: ' || SQLERRM ||
+            ' para depto: ' || :NEW.nro_depto ||
+            ', Edificio: ' || :NEW.id_edif ||
+            ', mes: ' || :NEW.anno_mes_pcgc
+        );
 END;
 
 
