@@ -99,7 +99,7 @@ CREATE OR REPLACE PACKAGE pkg_admin_condominio AS
         p_nro_depto  NUMBER,
         p_monto      NUMBER,
         p_anno_mes   NUMBER,
-        p_id_fpago   NUMBER DEFAULT NULL --*******************
+        p_id_fpago   NUMBER
     );
 END pkg_admin_condominio;
 
@@ -272,7 +272,14 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
             END;
 
     /* Procedimiento de pagos */
-    PROCEDURE sp_registrar_pago(p_id_edif NUMBER, p_nro_depto NUMBER, p_monto NUMBER, p_anno_mes NUMBER, p_id_fpago NUMBER DEFAULT NULL)
+    PROCEDURE sp_registrar_pago(
+        p_id_edif NUMBER,
+        p_nro_depto NUMBER,
+        p_monto NUMBER,
+        p_anno_mes NUMBER,
+        p_id_fpago NUMBER
+        )
+
         IS
             BEGIN
                 INSERT INTO PAGO_GASTO_COMUN
