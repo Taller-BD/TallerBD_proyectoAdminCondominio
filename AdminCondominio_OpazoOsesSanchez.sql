@@ -14,6 +14,7 @@ CREATE TABLE ERRORES_DETECTADOS (
 CREATE OR REPLACE PACKAGE pkg_registro_errores AS
     PROCEDURE sp_registrar_error(p_mensaje VARCHAR2);
 END pkg_registro_errores;
+/
 
 -- Body del Package Erorres
 CREATE OR REPLACE PACKAGE BODY pkg_registro_errores AS
