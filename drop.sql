@@ -43,7 +43,9 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN NULL;
 END;
 
----------------------
+--------------------------------------
+--------------------------------------
+
 -- 0) Deshabilitar/borrar trigger 
 DROP TRIGGER tgr_registra_pago;
 
