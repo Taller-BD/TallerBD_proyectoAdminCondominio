@@ -57,7 +57,10 @@ CREATE OR REPLACE TRIGGER tgr_registra_pago
 AFTER INSERT ON PAGO_GASTO_COMUN
 FOR EACH ROW
 DECLARE
+    v_errorcito VARCHAR2(4000);
 BEGIN
+    v_errorcito := SQLERRM;
+
     INSERT INTO registro_pagos(
         anno_mes_pcgc,
         id_edif,
@@ -78,7 +81,7 @@ BEGIN
     EXCEPTION
         WHEN OTHERS THEN
             pkg_registro_errores.sp_registrar_error(
-                'Error en Trigger registra pago: '||SQLERRM||
+                'Error en Trigger registra pago: '||v_errorcito||
                 ' ID Edificio: '||:NEW.id_edif||
                 ', Depto: '||:NEW.nro_depto||
                 ', Monto: '||:NEW.monto_cancelado_pgc||
@@ -147,7 +150,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
         RETURN NUMBER
             IS
                 v_total NUMBER := 0;
+                v_errorcito VARCHAR2(4000);
                 BEGIN
+                    v_errorcito := SQLERRM;
                     FOR r IN cur_gastos(p_id_edif, p_anno_mes)
                         LOOP
                             v_total := v_total + NVL(r.monto_total_gc,0);
@@ -155,7 +160,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
                     RETURN v_total;
                 EXCEPTION
                     WHEN OTHERS THEN
-                        pkg_registro_errores.sp_registrar_error('Total gastos mes: '||SQLERRM||
+                        pkg_registro_errores.sp_registrar_error('Total gastos mes: '||v_errorcito||
                                                                 'ID Edificio: '||p_id_edif||', mes: '||p_anno_mes);
                     RETURN 0;
                 END;
@@ -165,7 +170,10 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
         RETURN NUMBER
             IS
                 v_por NUMBER := 0;
+                v_errorcito VARCHAR2(4000);
                 BEGIN
+                    v_errorcito := SQLERRM;
+
                     SELECT PORC_PRORRATEO_DEPTO
                     INTO v_por
                     FROM DEPARTAMENTO
@@ -188,7 +196,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
                         RETURN 0;
                     WHEN OTHERS THEN
                         pkg_registro_errores.sp_registrar_error(
-                            'Porcentaje Dpto: '||SQLERRM||
+                            'Porcentaje Dpto: '||v_errorcito||
                             ' ID Edificio: '||p_id_edif||', Nro Dpto: '||p_nro_depto
                         );
                         RETURN 0;
@@ -204,12 +212,17 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
             v_idx           NUMBER := 0; 
             v_total         NUMBER := 0;
             v_suma_pror     NUMBER := 0;
+
+            v_errorcito    VARCHAR2(4000);
             
             BEGIN
                 /* inicializo los varrays */
                 v_montos := varray_montos();
                 v_deptos := varray_deptos();
                 v_prorr  := varray_prorrateo();
+
+                -- SQLERRM
+                v_errorcito := SQLERRM;
 
                 /* Cursor simple */
                 FOR r IN cur_gastos(p_id_edif, p_anno_mes) LOOP
@@ -274,7 +287,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
                 pkg_registro_errores.sp_registrar_error('Suma prorrateos: '||v_suma_pror);
             EXCEPTION
                 WHEN OTHERS THEN
-                    pkg_registro_errores.sp_registrar_error('Prorrateo gastos: '||SQLERRM||
+                    pkg_registro_errores.sp_registrar_error('Prorrateo gastos: '||v_errorcito||
                                                             ' ID Edifciio: '||p_id_edif||', mes: '||p_anno_mes);
             END;
 
@@ -288,7 +301,10 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
         )
 
         IS
+            v_errorcito VARCHAR2(4000);
             BEGIN
+                v_errorcito := SQLERRM;
+
                 INSERT INTO PAGO_GASTO_COMUN
                     (id_edif, nro_depto, anno_mes_pcgc, fecha_cancelacion_pgc, monto_cancelado_pgc, id_fpago)
                 VALUES
@@ -296,7 +312,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
             EXCEPTION
                 WHEN OTHERS THEN
                     pkg_registro_errores.sp_registrar_error(
-                    'Registrar pago: '||SQLERRM||
+                    'Registrar pago: '||v_errorcito||
                     ', ID EDifiucio: '||p_id_edif||
                     ', Depto: '||p_nro_depto||
                     ', Monto: '||p_monto||
