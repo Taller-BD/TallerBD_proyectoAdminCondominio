@@ -21,6 +21,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_registro_errores AS
     PROCEDURE sp_registrar_error(p_mensaje VARCHAR2)
         IS
             v_porqueocurre VARCHAR2(4000);
+            v_errorcito    VARCHAR2(4000);
             BEGIN
                 v_porqueocurre := SUBSTR(NVL(p_mensaje,''),1,4000);
 
@@ -29,9 +30,10 @@ CREATE OR REPLACE PACKAGE BODY pkg_registro_errores AS
             EXCEPTION
                 WHEN OTHERS THEN
                     BEGIN 
+                        v_errorcito := SQLERRM;
                         INSERT INTO errores_detectados(error_id, mensaje)
                         VALUES (seq_errores_detectados.NEXTVAL,
-                            'Error al registrar error: '||SQLERRM);
+                            'Error al registrar error: '||v_errorcito);
                     EXCEPTION
                         WHEN OTHERS THEN NULL; 
                     END;
