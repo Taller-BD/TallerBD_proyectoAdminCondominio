@@ -21,12 +21,12 @@ CREATE OR REPLACE PACKAGE BODY pkg_registro_errores AS
     PROCEDURE sp_registrar_error(p_mensaje VARCHAR2)
         IS
             BEGIN
-                INSERT INTO ERRORES_DETECTADOS(error_id, mensaje)
+                INSERT INTO errores_detectados(error_id, mensaje)
                 VALUES (seq_errores_detectados.NEXTVAL, SUBSTR(NVL(p_mensaje,''),1,4000));
             EXCEPTION
                 WHEN OTHERS THEN
                     BEGIN 
-                        INSERT INTO ERRORES_DETECTADOS(error_id, mensaje)
+                        INSERT INTO errores_detectados(error_id, mensaje)
                         VALUES (seq_errores_detectados.NEXTVAL,
                             'Error al registrar error: '||SQLERRM);
                     EXCEPTION
@@ -34,7 +34,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_registro_errores AS
                     END;
             END;
 END pkg_registro_errores;
-
+/
 
 /* 1. Tabla de registro de pagos */
 CREATE TABLE registro_pagos (
