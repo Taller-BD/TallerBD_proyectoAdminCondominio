@@ -102,6 +102,7 @@ CREATE OR REPLACE PACKAGE pkg_admin_condominio AS
         p_id_fpago   NUMBER
     );
 END pkg_admin_condominio;
+/
 
 /* Body del package admin condominio */
 CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
