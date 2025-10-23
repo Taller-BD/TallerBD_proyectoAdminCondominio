@@ -191,14 +191,19 @@ CREATE OR REPLACE PACKAGE BODY pkg_admin_condominio AS
     PROCEDURE sp_prorratea_gastos(p_id_edif NUMBER, p_anno_mes NUMBER, p_nro_depto NUMBER)
         IS
             v_reg           rec_gasto;
-            v_montos        varray_montos := varray_montos(); 
-            v_deptos        varray_deptos := varray_deptos();
-            v_prorr         varray_prorrateo := varray_prorrateo();
+            v_montos        varray_montos; 
+            v_deptos        varray_deptos;
+            v_prorr         varray_prorrateo;
             v_idx           NUMBER := 0; 
             v_total         NUMBER := 0;
             v_suma_pror     NUMBER := 0;
             
             BEGIN
+                /* inicializo los varrays */
+                v_montos := varray_montos();
+                v_deptos := varray_deptos();
+                v_prorr  := varray_prorrateo();
+
                 /* Cursor simple */
                 FOR r IN cur_gastos(p_id_edif, p_anno_mes) LOOP
                     IF v_deptos.COUNT = v_deptos.LIMIT OR v_montos.COUNT = v_montos.LIMIT THEN
