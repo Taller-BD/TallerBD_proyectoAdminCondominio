@@ -20,12 +20,12 @@ END pkg_registro_errores;
 CREATE OR REPLACE PACKAGE BODY pkg_registro_errores AS
     PROCEDURE sp_registrar_error(p_mensaje VARCHAR2)
         IS
-            v_mensaje VARCHAR2(4000);
+            v_porqueocurre VARCHAR2(4000);
             BEGIN
-                v_mensaje := SUBSTR(NVL(p_mensaje,''),1,4000);
+                v_porqueocurre := SUBSTR(NVL(p_mensaje,''),1,4000);
 
                 INSERT INTO errores_detectados(error_id, mensaje)
-                VALUES (seq_errores_detectados.NEXTVAL, v_mensaje);
+                VALUES (seq_errores_detectados.NEXTVAL, v_porqueocurre);
             EXCEPTION
                 WHEN OTHERS THEN
                     BEGIN 

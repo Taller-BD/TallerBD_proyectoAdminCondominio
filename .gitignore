@@ -5,3 +5,6 @@ passwords.txt
 
 # Ignorar configuraciones locales de VS Code
 .vscode/
+
+# ignorar nodemodules
+node_modules/
