@@ -23,7 +23,14 @@ CREATE OR REPLACE PACKAGE BODY pkg_registro_errores AS
                 INSERT INTO ERRORES_DETECTADOS(error_id, mensaje)
                 VALUES (seq_errores_detectados.NEXTVAL, SUBSTR(NVL(p_mensaje,''),1,4000));
             EXCEPTION
-                WHEN OTHERS THEN NULL; 
+                WHEN OTHERS THEN
+                    BEGIN 
+                        INSERT INTO ERRORES_DETECTADOS(error_id, mensaje)
+                        VALUES (seq_errores_detectados.NEXTVAL,
+                            'Error al registrar error: '||SQLERRM);
+                    EXCEPTION
+                        WHEN OTHERS THEN NULL; 
+                    END;
             END;
 END pkg_registro_errores;
 
