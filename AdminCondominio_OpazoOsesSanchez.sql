@@ -22,7 +22,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_registro_errores AS
         IS
             BEGIN
                 INSERT INTO errores_detectados(error_id, mensaje)
-                VALUES (seq_errores_detectados.NEXTVAL, SUBSTR(NVL(p_mensaje,''),1,4000));
+                VALUES (seq_errores_detectados.NEXTVAL, SUBSTR(NVL(TO_CHAR(p_mensaje),''),1,4000));
             EXCEPTION
                 WHEN OTHERS THEN
                     BEGIN 
